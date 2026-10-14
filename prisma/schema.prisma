@@ -1,0 +1,185 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String          @id @default(uuid())
+  email         String          @unique
+  name          String
+  role          String          @default("Farmer")
+  avatarUrl     String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  farms         Farm[]
+  preferences   UserPreference?
+  aiMessages    AIMessage[]
+}
+
+model UserPreference {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  language        String   @default("en")
+  unitSystem      String   @default("metric") // metric or imperial
+  currency        String   @default("KSh")    // KSh, USD, INR, EUR
+  notifications   Boolean  @default(true)
+  theme           String   @default("light")
+  updatedAt       DateTime @updatedAt
+}
+
+model Farm {
+  id                 String           @id @default(uuid())
+  userId             String
+  user               User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name               String
+  country            String
+  region             String
+  district           String?
+  latitude           Float?
+  longitude          Float?
+  totalArea          Float            @default(1.2)
+  areaUnit           String           @default("hectares")
+  soilType           String           @default("Loam")
+  soilPh             Float?           @default(6.5)
+  organicMatter      String?          @default("Medium")
+  nitrogenLevel      String?
+  phosphorusLevel    String?
+  potassiumLevel     String?
+  irrigationType     String           @default("Rain-fed")
+  waterAvailability  String           @default("Moderate")
+  mainGoal           String           @default("Higher Yield")
+  farmingExperience  String           @default("Intermediate")
+  farmingPractice    String           @default("Transitioning to Organic")
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  fields             Field[]
+  cropCycles         CropCycle[]
+  reminders          Reminder[]
+  soilTests          SoilTest[]
+}
+
+model Field {
+  id           String      @id @default(uuid())
+  farmId       String
+  farm         Farm        @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  name         String
+  areaHectares Float
+  soilType     String?
+  cropCycles   CropCycle[]
+}
+
+model SoilTest {
+  id            String   @id @default(uuid())
+  farmId        String
+  farm          Farm     @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  testDate      DateTime @default(now())
+  ph            Float
+  organicCarbon Float?
+  nitrogenPpm   Float?
+  phosphorusPpm Float?
+  potassiumPpm  Float?
+  recommendations String?
+  labName       String?
+}
+
+model CropCycle {
+  id                  String             @id @default(uuid())
+  farmId              String
+  farm                Farm               @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  fieldId             String?
+  field               Field?             @relation(fields: [fieldId], references: [id], onDelete: SetNull)
+  cropName            String
+  variety             String
+  plantingDate        DateTime
+  expectedHarvestDate DateTime
+  actualHarvestDate   DateTime?
+  status              String             @default("ACTIVE") // ACTIVE, COMPLETED, ABANDONED
+  durationDays        Int
+  totalArea           Float
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  tasks               CropCalendarTask[]
+  expenses            Expense[]
+  harvestRecords      HarvestRecord[]
+}
+
+model CropCalendarTask {
+  id          String    @id @default(uuid())
+  cropCycleId String
+  cropCycle   CropCycle @relation(fields: [cropCycleId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  category    String    // Fertilizer, Weather, Irrigation, Pest Control, Harvest, Soil Prep
+  dueDate     DateTime
+  completed   Boolean   @default(false)
+  completedAt DateTime?
+}
+
+model Expense {
+  id          String    @id @default(uuid())
+  cropCycleId String
+  cropCycle   CropCycle @relation(fields: [cropCycleId], references: [id], onDelete: Cascade)
+  category    String    // seeds, soilAmendments, fertilizers, labour, irrigation, pestControl, equipment, packaging, storage, transport, other
+  amount      Float
+  currency    String    @default("KSh")
+  date        DateTime  @default(now())
+  notes       String?
+}
+
+model HarvestRecord {
+  id          String    @id @default(uuid())
+  cropCycleId String
+  cropCycle   CropCycle @relation(fields: [cropCycleId], references: [id], onDelete: Cascade)
+  harvestDate DateTime  @default(now())
+  quantityKg  Float
+  qualityGrade String?
+  marketSoldTo String?
+  grossEarnings Float?
+}
+
+model CropHealthRecord {
+  id               String   @id @default(uuid())
+  cropName         String
+  plantPart        String
+  imageUrl         String?
+  detectedIssue    String
+  issueType        String   // Disease, Pest, Deficiency, Stress
+  confidence       Float
+  symptoms         String
+  recommendedAction String
+  createdAt        DateTime @default(now())
+}
+
+model Reminder {
+  id        String   @id @default(uuid())
+  farmId    String
+  farm      Farm     @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  title     String
+  dueTime   String
+  category  String
+  completed Boolean  @default(false)
+}
+
+model KnowledgeSource {
+  id          String   @id @default(uuid())
+  title       String
+  category    String
+  sourceUrl   String?
+  content     String
+  updatedAt   DateTime @updatedAt
+}
+
+model AIMessage {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      String   // user or assistant
+  content   String
+  metadata  String?  // JSON string for action buttons
+  createdAt DateTime @default(now())
+}
